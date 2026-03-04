@@ -1,59 +1,21 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, Phone, Loader2 } from 'lucide-react';
+import { Mail, Lock, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui-login/input';
-import { Button } from '@/components/ui-login/button';
 import { Label } from '@/components/ui-login/label';
 
-export default function AuthForm({
-  type,
-  onSubmit,
-  loading,
-  error,
-  submitLabel,
-  footer,
-}) {
-  const [fullName, setFullName] = useState('');
+export default function AuthForm({ onSubmit, loading, error, submitLabel }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
 
-  const isLogin = type === 'login';
+  const isFilled = email.trim() !== '' && password.trim() !== '';
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    const payload = isLogin
-      ? { email, password }
-      : { fullName, email, password, phone };
-
-    onSubmit?.(payload);
+    onSubmit?.({ email, password });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {!isLogin && (
-        <div className="space-y-2">
-          <Label htmlFor="fullName" className="text-sm font-medium text-neutral-800">
-            Full Name
-          </Label>
-          <div className="relative">
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-neutral-400">
-              <User size={18} />
-            </span>
-            <Input
-              id="fullName"
-              type="text"
-              autoComplete="name"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="pl-10 rounded-xl border-[#C3110C] focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-1"
-              placeholder="John Doe"
-            />
-          </div>
-        </div>
-      )}
-
       <div className="space-y-2">
         <Label htmlFor="email" className="text-sm font-medium text-neutral-800">
           Email
@@ -75,29 +37,6 @@ export default function AuthForm({
         </div>
       </div>
 
-      {!isLogin && (
-        <div className="space-y-2">
-          <Label htmlFor="phone" className="text-sm font-medium text-neutral-800">
-            Phone
-          </Label>
-          <div className="relative">
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-neutral-400">
-              <Phone size={18} />
-            </span>
-            <Input
-              id="phone"
-              type="tel"
-              autoComplete="tel"
-              required
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="pl-10 rounded-xl border border-[#C3110C] focus-visible:ring-2 focus-visible:ring-[#E6501B] focus-visible:border-[#E6501B] focus-visible:ring-offset-1"
-              placeholder="+1 555 123 4567"
-            />
-          </div>
-        </div>
-      )}
-
       <div className="space-y-2">
         <Label htmlFor="password" className="text-sm font-medium text-neutral-800">
           Password
@@ -109,7 +48,7 @@ export default function AuthForm({
           <Input
             id="password"
             type="password"
-            autoComplete={isLogin ? 'current-password' : 'new-password'}
+            autoComplete="current-password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -125,19 +64,19 @@ export default function AuthForm({
         </p>
       )}
 
-      <Button
+      <button
         type="submit"
         disabled={loading}
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#C3110C] text-white hover:bg-[#E6501B] disabled:cursor-not-allowed disabled:opacity-70"
+        style={{ backgroundColor: isFilled ? '#C3110C' : '#d1d5db', cursor: isFilled ? 'pointer' : 'default' }}
+        onMouseEnter={e => { if (isFilled) e.currentTarget.style.backgroundColor = '#E6501B'; }}
+        onMouseLeave={e => { if (isFilled) e.currentTarget.style.backgroundColor = '#C3110C'; }}
+        className="flex h-11 w-full items-center justify-center gap-2 rounded-full text-white text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70"
       >
         {loading && <Loader2 className="h-4 w-4 animate-spin" />}
         <span>{submitLabel}</span>
-      </Button>
-
-      {footer ? (
-        <div className="pt-2 text-center text-sm text-neutral-500">{footer}</div>
-      ) : null}
+      </button>
     </form>
   );
 }
+
 

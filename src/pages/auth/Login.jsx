@@ -36,14 +36,13 @@ export default function ChefLogin() {
   return (
     <AuthCard title="Welcome back" description="Sign in to manage your restaurant operations.">
       <AuthForm
-        type="login"
         onSubmit={handleLogin}
         loading={loading}
         error={error}
         submitLabel="Sign in"
       />
       <p className="mt-4 text-xs text-neutral-400">
-        Only the restaurant owner can self-register. Managers and staff should use their assigned credentials.
+        Use your assigned chef credentials to sign in.
       </p>
     </AuthCard>
   );
