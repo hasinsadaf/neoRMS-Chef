@@ -8,7 +8,7 @@ import { useAuth } from "../../context/AuthContext";
 
 export default function ChefLogin() {
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -24,6 +24,7 @@ export default function ChefLogin() {
       localStorage.setItem("authToken", accessToken);
       const me = await getChefProfile();
       login(accessToken, user.role, me.fullName, me.Chef.tenantId, me.Chef.restaurantId);
+      updateUser(me);
       navigate("/dashboard", { replace: true });
     } catch (e) {
       setError(e?.response?.data?.message || e.message || "Login failed");

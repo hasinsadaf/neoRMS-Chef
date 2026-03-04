@@ -1,4 +1,5 @@
 import axios from "axios";
+import { updateTokenFromInterceptor } from "../context/AuthContext";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -34,7 +35,7 @@ api.interceptors.response.use(
         const { data } = await api.post("/auth/refresh-token");
         const newToken = data?.data?.accessToken;
         if (newToken) {
-          localStorage.setItem("authToken", newToken);
+          updateTokenFromInterceptor(newToken);
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
         }
         return api(originalRequest);

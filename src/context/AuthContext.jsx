@@ -2,11 +2,25 @@ import React, { createContext, useContext, useState } from "react";
 
 const AuthContext = createContext(null);
 
+// Module-level setter so api.js interceptor can update token without being a React component
+let _setToken = null;
+export const updateTokenFromInterceptor = (newToken) => {
+  localStorage.setItem("authToken", newToken);
+  _setToken?.(newToken);
+};
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem("authToken"));
   const [role, setRole] = useState(() => localStorage.getItem("authRole"));
   const [tenantId, setTenantId] = useState(() => localStorage.getItem("tenantId"));
   const [restaurantId, setRestaurantId] = useState(() => localStorage.getItem("restaurantId"));
+  const [user, setUser] = useState(() => {
+    const name = localStorage.getItem("userName");
+    return name ? { fullName: name } : null;
+  });
+
+  // Register the token setter so the api interceptor can reach it
+  _setToken = setToken;
 
   const login = (accessToken, userRole, userName, tenantId, restaurantId) => {
     localStorage.setItem("authToken", accessToken);
@@ -32,11 +46,17 @@ export function AuthProvider({ children }) {
     setRole(null);
     setTenantId(null);
     setRestaurantId(null);
+    setUser(null);
+  };
+
+  const updateUser = (userData) => {
+    if (userData?.fullName) localStorage.setItem("userName", userData.fullName);
+    setUser(userData);
   };
 
   return (
     <AuthContext.Provider
-      value={{ token, role, tenantId, restaurantId, isAuthenticated: !!token, login, logout }}
+      value={{ token, role, tenantId, restaurantId, user, isAuthenticated: !!token, login, logout, updateUser }}
     >
       {children}
     </AuthContext.Provider>
