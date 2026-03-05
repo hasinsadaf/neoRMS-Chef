@@ -24,8 +24,16 @@ export const useSocket = () => useContext(SocketContext);
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { token, tenantId, user } = useAuth();
-  const { addOrder, updateOrderStatus, removeOrder } = useOrders();
+  const { token, tenantId, user } = useAuth() as {
+    token: string | null;
+    tenantId: string | null;
+    user: { id?: string | null } | null;
+  };
+  const { addOrder, updateOrderStatus, removeOrder } = useOrders() as {
+    addOrder: (order: any) => void;
+    updateOrderStatus: (orderId: string, newStatus: string) => void;
+    removeOrder: (orderId: string) => void;
+  };
   const socketRef = useRef<ReturnType<typeof socketio> | null>(null);
   const [socket, setSocket] = useState<ReturnType<typeof socketio> | null>(
     null,
@@ -48,7 +56,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
     if (socketRef.current?.connected) return;
 
     const s = socketio(SOCKET_URL, {
-      withCredentials: true,
+      withCredentials: false,
       auth: { token },
       extraHeaders: {
         "x-tenant-id": tenantId ?? "",
@@ -82,14 +90,14 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error("[Socket] SOCKET_ERROR_EVENT:", data);
     });
 
-    // NEW ORDER PLACED - Fetch full order and add to dashboard
-    s.on(ChefSocketEventEnum.ORDER_PLACED_EVENT, async (data) => {
+    // ORDER CONFIRMED - Fetch full order and add to dashboard
+    s.on(ChefSocketEventEnum.ORDER_CONFIRMED_EVENT, async (data) => {
       try {
-        console.log("[Socket] ORDER_PLACED_EVENT received:", data);
+        console.log("[Socket] ORDER_CONFIRMED_EVENT received:", data);
         
         const orderId = data?.orderId || data?.id;
         if (!orderId) {
-          console.error("[Socket] No orderId in ORDER_PLACED_EVENT");
+          console.error("[Socket] No orderId in ORDER_CONFIRMED_EVENT");
           return;
         }
 
@@ -100,7 +108,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
         // Add to orders dashboard
         addOrder(fullOrder);
       } catch (error) {
-        console.error("[Socket] Failed to process ORDER_PLACED_EVENT:", error);
+        console.error("[Socket] Failed to process ORDER_CONFIRMED_EVENT:", error);
       }
     });
 
@@ -110,28 +118,111 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
         console.log("[Socket] ORDER_IN_PROGRESS_EVENT received:", data);
         
         const orderId = data?.orderId || data?.id;
-        const chefWhoAcceptedId = data?.chefId;
+        const eventChefIdsRaw = [
+          data?.chefId,
+          data?.acceptedByChefId,
+          data?.chef?.id,
+          data?.acceptedBy?.id,
+          data?.userId,
+        ];
 
-        if (!orderId || !chefWhoAcceptedId) {
-          console.error("[Socket] Missing orderId or chefId in ORDER_IN_PROGRESS_EVENT");
+        if (!orderId) {
+          console.error("[Socket] Missing orderId in ORDER_IN_PROGRESS_EVENT");
           return;
         }
 
-        const currentChefId = user?.id || localStorage.getItem("chefId");
+        const normalizeId = (value: unknown) =>
+          String(value ?? "")
+            .trim()
+            .toLowerCase();
+
+        const uniqueNormalized = (values: unknown[]) =>
+          Array.from(
+            new Set(
+              values
+                .map((v) => normalizeId(v))
+                .filter((v) => v.length > 0),
+            ),
+          );
+
+        const currentChefIds = uniqueNormalized([
+          user?.id,
+          localStorage.getItem("userId"),
+          localStorage.getItem("chefId"),
+        ]);
+        const eventChefIds = uniqueNormalized(eventChefIdsRaw);
+
+        console.log("[Socket][ORDER_IN_PROGRESS] ownership candidates", {
+          orderId,
+          eventChefIdsRaw,
+          eventChefIds,
+          currentChefIds,
+          authUserId: user?.id,
+          localUserId: localStorage.getItem("userId"),
+          localChefId: localStorage.getItem("chefId"),
+        });
+
+        const matchesCurrentChefFromEvent = eventChefIds.some((id) =>
+          currentChefIds.includes(id),
+        );
+
+        const fullOrder = await getOrder(orderId);
+        const orderChefIds = uniqueNormalized([
+          fullOrder?.chefId,
+          fullOrder?.assignedChefId,
+          fullOrder?.chef?.id,
+          fullOrder?.acceptedByChefId,
+          fullOrder?.acceptedBy?.id,
+          fullOrder?.userId,
+        ]);
+        const matchesCurrentChefFromOrder = orderChefIds.some((id) =>
+          currentChefIds.includes(id),
+        );
+
+        console.log("[Socket][ORDER_IN_PROGRESS] fetched order ownership", {
+          orderId,
+          orderStatus: fullOrder?.status,
+          orderChefIds,
+          matchesCurrentChefFromEvent,
+          matchesCurrentChefFromOrder,
+        });
 
         // This chef accepted the order
-        if (chefWhoAcceptedId === currentChefId) {
-          console.log("[Socket] Current chef accepted the order:", orderId);
-          updateOrderStatus(orderId, "cooking");
+        if (matchesCurrentChefFromEvent || matchesCurrentChefFromOrder) {
+          console.log("[Socket] Current chef accepted the order, moving to PREPARING:", orderId);
+          addOrder({ ...fullOrder, status: "PREPARING" });
+          console.log("[Socket] Refetched accepted order and upserted into PREPARING:", orderId);
         } 
         // Another chef accepted the order
         else {
+          if (currentChefIds.length === 0) {
+            console.warn(
+              "[Socket] Could not determine current chef identity. Skipping removal to avoid wrong deletion:",
+              orderId,
+            );
+            return;
+          }
+
+          if (eventChefIds.length === 0 && orderChefIds.length === 0) {
+            console.warn(
+              "[Socket] No chef identity present in event/order payload. Skipping removal for safety:",
+              orderId,
+            );
+            return;
+          }
+
           console.log("[Socket] Another chef accepted this order, removing from dashboard:", orderId);
           removeOrder(orderId);
         }
       } catch (error) {
         console.error("[Socket] Failed to process ORDER_IN_PROGRESS_EVENT:", error);
       }
+    });
+
+    // ORDER DELIVERED - order moved to DELIVERED status
+    s.on(ChefSocketEventEnum.ORDER_DELIVERED_EVENT, (data) => {
+      console.log("[Socket] ORDER_DELIVERED_EVENT received:", data);
+      alert(`[orderDelivered]\nOrder ID: ${data?.orderId ?? "unknown"}`);
     });
 
     // ORDER CANCELLED - Remove or update the order
