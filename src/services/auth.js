@@ -10,3 +10,13 @@ export const loginManagement = async ({ email, password }) => {
 
   return { accessToken, user };
 };
+
+export const getMeAfterLogin = async (accessToken) => {
+  const response = await api.get("/user/me", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  return response.data?.data ?? response.data;
+};

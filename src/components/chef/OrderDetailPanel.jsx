@@ -3,6 +3,7 @@ import { RightPanel } from "../ui/RightPanel";
 import { Button } from "../ui-waiter/button";
 import { getOrder, updateOrderStatus } from "../../services/order";
 import { useOrders } from "../../context/OrdersContext";
+import { getDisplayOrderId } from "../../utils/orderId";
 
 export default function OrderDetailPanel({ order: orderProp, open, onClose }) {
   const { updateOrderStatus: updateBoardOrderStatus, addOrder } = useOrders();
@@ -72,7 +73,11 @@ export default function OrderDetailPanel({ order: orderProp, open, onClose }) {
   };
 
   return (
-    <RightPanel open={open} onClose={onClose} title={`Order #${order?.id || "Loading"}`}>
+    <RightPanel
+      open={open}
+      onClose={onClose}
+      title={order?.id ? `Order #${getDisplayOrderId(order.id)}` : "Order #Loading"}
+    >
       <div className="space-y-6">
         {loading && (
           <p className="text-sm text-[#999]">Loading order details...</p>

@@ -2,8 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import AuthCard from "../../components/auth/AuthCard";
 import AuthForm from "../../components/auth/AuthForm";
-import { loginManagement } from "@/services/auth";
-import { getChefProfile } from "@/services/profile";
+import { getMeAfterLogin, loginManagement } from "@/services/auth";
 import { useAuth } from "../../context/AuthContext";
 
 export default function ChefLogin() {
@@ -20,11 +19,17 @@ export default function ChefLogin() {
 
     try {
       const { accessToken, user } = await loginManagement({ email, password });
-      // Write token to localStorage so the /user/me request interceptor picks it up
-      localStorage.setItem("authToken", accessToken);
-      const me = await getChefProfile();
-      login(accessToken, user.role, me.fullName, me.Chef.tenantId, me.Chef.restaurantId);
-      updateUser(me);
+      const me = await getMeAfterLogin(accessToken);
+      console.debug("/user/me response", me);
+
+      const resolvedName = me?.fullName ?? user?.fullName ?? user?.name;
+      const resolvedUserId = me?.id ?? user?.id;
+      const resolvedTenantId = me?.Chef?.tenantId;
+      const resolvedRestaurantId = me?.Chef?.restaurantId;
+      const resolvedRole = me?.role ?? user?.role;
+
+      login(accessToken, resolvedRole, resolvedName, resolvedTenantId, resolvedRestaurantId, resolvedUserId);
+      if (me) updateUser(me);
       navigate("/dashboard", { replace: true });
     } catch (e) {
       setError(e?.response?.data?.message || e.message || "Login failed");

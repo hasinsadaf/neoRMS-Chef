@@ -28,7 +28,9 @@ export function AuthProvider({ children }) {
     localStorage.setItem("authRole", userRole);
     if (userName) localStorage.setItem("userName", userName);
     if (tenantId) localStorage.setItem("tenantId", tenantId);
+    else localStorage.removeItem("tenantId");
     if (restaurantId) localStorage.setItem("restaurantId", restaurantId);
+    else localStorage.removeItem("restaurantId");
     if (userId) localStorage.setItem("userId", userId);
     setToken(accessToken);
     setRole(userRole);

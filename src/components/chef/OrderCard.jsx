@@ -1,6 +1,7 @@
 import React from "react";
 import { ChevronRight } from "lucide-react";
 import { Card, CardContent } from "../ui-waiter/card";
+import { getDisplayOrderId } from "../../utils/orderId";
 
 export default function OrderCard({ order = {}, onClick }) {
   // Normalize backend status (CONFIRMED → confirmed)
@@ -41,7 +42,7 @@ export default function OrderCard({ order = {}, onClick }) {
         {/* Header */}
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-[#2C2C2C]">
-            Order #{order.id ?? "N/A"}
+            Order #{getDisplayOrderId(order.id)}
           </span>
 
           <div className="flex items-center gap-2">

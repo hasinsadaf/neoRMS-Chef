@@ -221,8 +221,20 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // ORDER DELIVERED - order moved to DELIVERED status
     s.on(ChefSocketEventEnum.ORDER_DELIVERED_EVENT, (data) => {
-      console.log("[Socket] ORDER_DELIVERED_EVENT received:", data);
-      alert(`[orderDelivered]\nOrder ID: ${data?.orderId ?? "unknown"}`);
+      try {
+        console.log("[Socket] ORDER_DELIVERED_EVENT received:", data);
+
+        const orderId = data?.orderId || data?.id;
+        if (!orderId) {
+          console.error("[Socket] No orderId in ORDER_DELIVERED_EVENT");
+          return;
+        }
+
+        removeOrder(orderId);
+        console.log("[Socket] Delivered order removed from board:", orderId);
+      } catch (error) {
+        console.error("[Socket] Failed to process ORDER_DELIVERED_EVENT:", error);
+      }
     });
 
     // ORDER CANCELLED - Remove or update the order
